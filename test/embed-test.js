@@ -35,6 +35,16 @@ var cryptedStamp = function(imageName) {
   return stamp.digest('hex');
 };
 
+var createTmp = function() {
+  var p = path.join(process.cwd(), 'test', 'tmp');
+  if (!existsSync(p))
+    fs.mkdirSync(p);
+};
+
+var tmpPath = function(suffix) {
+  return path.join(process.cwd(), 'test', 'tmp', suffix);
+};
+
 vows.describe('embedding images').addBatch({
   'plain content': {
     topic: runOn('div{width:100px;height:50px}'),
@@ -273,76 +283,79 @@ vows.describe('embedding images').addBatch({
       assert.equal("a{background:url(/test/data/gradient2.png)}", css.embedded.plain);
     }
   }
-// }).addBatch({
-//   'compressed content': {
-//     topic: runOn('a{background:#fff}'),
-//     'not by default': function(data) {
-//       assert.isUndefined(data.embedded.compressed);
-//     }
-//   },
-//   'compressed embedded content': {
-//     topic: runOn('a{background:#fff}', { pregzip: true }),
-//     'should be buffer': function(data) {
-//       assert.ok(Buffer.isBuffer(data.embedded.compressed));
-//     },
-//     'should be different from uncompressed': function(data) {
-//       assert.notEqual(data.embedded.compressed.toString(), data.embedded.plain);
-//     },
-//     'should be different from original': function(data) {
-//       assert.notEqual(data.embedded.compressed.toString(), data.original);
-//     },
-//     'uncompressing': {
-//       topic: function(data) {
-//         fs.writeFileSync('/tmp/data1.gz', data.embedded.compressed);
-//         exec("gzip -c -d /tmp/data1.gz", this.callback);
-//       },
-//       'should be equal to embedded': function(error, uncompressed) {
-//         assert.equal('a{background:#fff}', uncompressed);
-//       },
-//       teardown: function() {
-//         fs.unlinkSync('/tmp/data1.gz');
-//       }
-//     }
-//   },
-//   'compressed non-embedded content': {
-//     topic: runOn('a{background:#fff}', { pregzip: true, noEmbedVersion: true}),
-//     'should be buffer': function(data) {
-//       assert.ok(Buffer.isBuffer(data.notEmbedded.compressed));
-//     },
-//     'should be different from uncompressed': function(data) {
-//       assert.notEqual(data.notEmbedded.compressed.toString(), data.notEmbedded.plain);
-//     },
-//     'should be different from original': function(data) {
-//       assert.notEqual(data.notEmbedded.compressed.toString(), data.original);
-//     },
-//     'uncompressing': {
-//       topic: function(data) {
-//         fs.writeFileSync('/tmp/data2.gz', data.notEmbedded.compressed);
-//         exec("gzip -c -d /tmp/data2.gz", this.callback);
-//       },
-//       'should be equal to embedded': function(error, uncompressed) {
-//         assert.equal('a{background:#fff}', uncompressed);
-//       },
-//       teardown: function() {
-//         fs.unlinkSync('/tmp/data2.gz');
-//       }
-//     }
-//   },
-//   'long content': {
-//     topic: runOn(fs.readFileSync('./test/data/large.css', 'utf-8'), { pregzip: true }),
-//     'uncompressing': {
-//       topic: function(data) {
-//         fs.writeFileSync('/tmp/data3.gz', data.embedded.compressed);
-//         exec("gzip -c -d /tmp/data3.gz", this.callback);
-//       },
-//       'should be equal to embedded': function(error, uncompressed) {
-//         assert.equal(fs.readFileSync('./test/data/large.css', 'utf-8'), uncompressed);
-//       },
-//       teardown: function() {
-//         fs.unlinkSync('/tmp/data3.gz');
-//       }
-//     }
-//   }
+}).addBatch({
+  'compressed content': {
+    topic: runOn('a{background:#fff}'),
+    'not by default': function(data) {
+      assert.isUndefined(data.embedded.compressed);
+    }
+  },
+  'compressed embedded content': {
+    topic: runOn('a{background:#fff}', { pregzip: true }),
+    'should be buffer': function(data) {
+      assert.ok(Buffer.isBuffer(data.embedded.compressed));
+    },
+    'should be different from uncompressed': function(data) {
+      assert.notEqual(data.embedded.compressed.toString(), data.embedded.plain);
+    },
+    'should be different from original': function(data) {
+      assert.notEqual(data.embedded.compressed.toString(), data.original);
+    },
+    'uncompressing': {
+      topic: function(data) {
+        createTmp();
+        fs.writeFileSync(tmpPath('data1.gz'), data.embedded.compressed);
+        exec("gzip -c -d " + tmpPath('data1.gz'), this.callback);
+      },
+      'should be equal to embedded': function(error, uncompressed) {
+        assert.equal('a{background:#fff}', uncompressed);
+      },
+      teardown: function() {
+        fs.unlinkSync(tmpPath('data1.gz'));
+      }
+    }
+  },
+  'compressed non-embedded content': {
+    topic: runOn('a{background:#fff}', { pregzip: true, noEmbedVersion: true}),
+    'should be buffer': function(data) {
+      assert.ok(Buffer.isBuffer(data.notEmbedded.compressed));
+    },
+    'should be different from uncompressed': function(data) {
+      assert.notEqual(data.notEmbedded.compressed.toString(), data.notEmbedded.plain);
+    },
+    'should be different from original': function(data) {
+      assert.notEqual(data.notEmbedded.compressed.toString(), data.original);
+    },
+    'uncompressing': {
+      topic: function(data) {
+        createTmp();
+        fs.writeFileSync(tmpPath('data2.gz'), data.notEmbedded.compressed);
+        exec("gzip -c -d " + tmpPath('data2.gz'), this.callback);
+      },
+      'should be equal to embedded': function(error, uncompressed) {
+        assert.equal('a{background:#fff}', uncompressed);
+      },
+      teardown: function() {
+        fs.unlinkSync(tmpPath('data2.gz'));
+      }
+    }
+  },
+  'long content': {
+    topic: runOn(fs.readFileSync('./test/data/large.css', 'utf-8'), { pregzip: true }),
+    'uncompressing': {
+      topic: function(data) {
+        createTmp();
+        fs.writeFileSync(tmpPath('data3.gz'), data.embedded.compressed);
+        exec("gzip -c -d " + tmpPath('data3.gz'), this.callback);
+      },
+      'should be equal to embedded': function(error, uncompressed) {
+        assert.equal(fs.readFileSync('./test/data/large.css', 'utf-8'), uncompressed);
+      },
+      teardown: function() {
+        fs.unlinkSync(tmpPath('data3.gz'));
+      }
+    }
+  }
 }).addBatch({
   'list of missing files': {
     topic: runOn('a{background:url(/test/data/gradient2.png)} p{background:url(/test/data/gradient2.jpg)}')().missing,
@@ -370,7 +383,7 @@ vows.describe('embedding images').addBatch({
       assert.equal(parsed.relative, '/test/data/gradient.png');
     },
     'should get right absolute path': function(parsed) {
-      assert.equal(parsed.absolute, process.cwd() + '/test/data/gradient.png');
+      assert.equal(parsed.absolute, path.join(process.cwd(), 'test', 'data', 'gradient.png'));
     },
     'should exists': function(parsed) {
       assert.isTrue(parsed.exists);
@@ -385,7 +398,7 @@ vows.describe('embedding images').addBatch({
       assert.equal(parsed.relative, '/test/data/gradient.png');
     },
     'should get right absolute path': function(parsed) {
-      assert.equal(parsed.absolute, process.cwd() + '/test/data/gradient.png');
+      assert.equal(parsed.absolute, path.join(process.cwd(), 'test', 'data', 'gradient.png'));
     },
     'should exists': function(parsed) {
       assert.isTrue(parsed.exists);
@@ -401,7 +414,7 @@ vows.describe('embedding images').addBatch({
       assert.equal(parsed.relative, '/test/data/gradient.png');
     },
     'should get right absolute path': function(parsed) {
-      assert.equal(parsed.absolute, process.cwd() + '/test/data/gradient.png');
+      assert.equal(parsed.absolute, path.join(process.cwd(), 'test', 'data', 'gradient.png'));
     },
     'should exists': function(parsed) {
       assert.isTrue(parsed.exists);
@@ -416,7 +429,7 @@ vows.describe('embedding images').addBatch({
       assert.equal(parsed.relative, '/test/data/gradient.png');
     },
     'should get right absolute path': function(parsed) {
-      assert.equal(parsed.absolute, process.cwd() + '/test/data/gradient.png');
+      assert.equal(parsed.absolute, path.join(process.cwd(), 'test', 'data', 'gradient.png'));
     },
     'should exists': function(parsed) {
       assert.isTrue(parsed.exists);
