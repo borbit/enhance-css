@@ -1,0 +1,1 @@
+node .\node_modules\vows\bin\vows test\embed-test.js
